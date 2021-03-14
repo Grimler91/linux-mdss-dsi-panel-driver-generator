@@ -109,12 +109,20 @@ class Dimension:
 
 	def __init__(self, fdt: Fdt2, panel_node: int, mode_node: int, t: Type) -> None:
 		self.type = type
-		self.px = fdt.getprop(mode_node, f'qcom,mdss-dsi-panel-{t.size}').as_int32()
-		self.fp = fdt.getprop(mode_node, f'qcom,mdss-dsi-{t.prefix}-front-porch').as_int32()
-		self.bp = fdt.getprop(mode_node, f'qcom,mdss-dsi-{t.prefix}-back-porch').as_int32()
-		self.pw = fdt.getprop(mode_node, f'qcom,mdss-dsi-{t.prefix}-pulse-width').as_int32()
-		self.size = fdt.getprop_int32(panel_node, f'qcom,mdss-pan-physical-{t.size}-dimension')
-
+		if t.size == "width":
+			self.px = fdt.getprop(mode_node, f'qcom,mdss-pan-res').as_uint32_array()[1]
+			self.fp = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[5]
+			self.bp = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[3]
+			self.pw = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[4]
+			self.size = fdt.getprop(panel_node, f'qcom,mdss-pan-size').as_uint32_array()[0]
+		elif t.size == "height":
+			self.px = fdt.getprop(mode_node, f'qcom,mdss-pan-res').as_uint32_array()[0]
+			self.fp = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[2]
+			self.bp = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[0]
+			self.pw = fdt.getprop(mode_node, f'qcom,mdss-pan-porch-values').as_uint32_array()[1]
+			self.size = fdt.getprop(panel_node, f'qcom,mdss-pan-size').as_uint32_array()[1]
+		else:
+			raise ValueError(f'Unknown dimension {t.size}')
 
 @dataclass
 class Command:
@@ -136,12 +144,12 @@ class CommandSequence:
 		HS_MODE = 'dsi_hs_mode'
 
 	def __init__(self, fdt: Fdt2, node: int, cmd: str) -> None:
-		self.state = CommandSequence.State(fdt.getprop(node, f'qcom,mdss-dsi-{cmd}-command-state').as_str())
+		self.state = CommandSequence.State(fdt.getprop(node, f'qcom,on-cmds-dsi-state').as_str())
 		self.seq = []
 
-		prop = fdt.getprop_or_none(node, f'qcom,mdss-dsi-{cmd}-command')
+		prop = fdt.getprop_or_none(node, f'qcom,panel-display-{cmd}-seq')
 		if prop is None:
-			print(f'Warning: qcom,mdss-dsi-{cmd}-command does not exist')
+			print(f'Warning: qcom,panel-display-{cmd}-seq does not exist')
 			return  # No commands
 		itr = iter(prop)
 
@@ -215,10 +223,10 @@ class Panel:
 		mode_node = _find_mode_node(fdt, node)
 		self.h = Dimension(fdt, node, mode_node, Dimension.Type.HORIZONTAL)
 		self.v = Dimension(fdt, node, mode_node, Dimension.Type.VERTICAL)
-		self.framerate = fdt.getprop(mode_node, 'qcom,mdss-dsi-panel-framerate').as_int32()
-		self.bpp = fdt.getprop(node, 'qcom,mdss-dsi-bpp').as_int32()
+		self.framerate = fdt.getprop(mode_node, 'qcom,mdss-pan-dsi-frame-rate').as_int32()
+		self.bpp = fdt.getprop(node, 'qcom,mdss-pan-bpp').as_int32()
 		self.mode = Mode('dsi_cmd_mode') # FIXME, what do to with missing dsi_cmd_mode?
-		self.traffic_mode = TrafficMode.parse(fdt.getprop(node, 'qcom,mdss-dsi-traffic-mode'))
+		self.traffic_mode = TrafficMode.parse(fdt.getprop(node, 'qcom,mdss-pan-dsi-traffic-mode'))
 
 		backlight = fdt.getprop_or_none(node, 'qcom,mdss-dsi-bl-pmic-control-type')
 		self.backlight = BacklightControl(backlight.as_str()) if backlight else None
