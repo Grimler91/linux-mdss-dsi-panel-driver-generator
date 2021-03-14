@@ -217,7 +217,7 @@ class Panel:
 		self.v = Dimension(fdt, node, mode_node, Dimension.Type.VERTICAL)
 		self.framerate = fdt.getprop(mode_node, 'qcom,mdss-dsi-panel-framerate').as_int32()
 		self.bpp = fdt.getprop(node, 'qcom,mdss-dsi-bpp').as_int32()
-		self.mode = Mode(fdt.getprop(node, 'qcom,mdss-dsi-panel-type').as_str())
+		self.mode = Mode('dsi_cmd_mode') # FIXME, what do to with missing dsi_cmd_mode?
 		self.traffic_mode = TrafficMode.parse(fdt.getprop(node, 'qcom,mdss-dsi-traffic-mode'))
 
 		backlight = fdt.getprop_or_none(node, 'qcom,mdss-dsi-bl-pmic-control-type')
